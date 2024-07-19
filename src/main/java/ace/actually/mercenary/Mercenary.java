@@ -2,10 +2,13 @@ package ace.actually.mercenary;
 
 import ace.actually.mercenary.blocks.FlagBlock;
 import brightspark.asynclocator.AsyncLocator;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -22,16 +25,31 @@ import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.tag.StructureTags;
 import net.minecraft.registry.tag.TagKey;
+import net.minecraft.scoreboard.ScoreboardCriterion;
+import net.minecraft.scoreboard.ScoreboardObjective;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.LocateCommand;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
+import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.gen.structure.Structure;
+import org.apache.commons.io.FileUtils;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static net.minecraft.server.command.CommandManager.argument;
+import static net.minecraft.server.command.CommandManager.literal;
 
 public class Mercenary implements ModInitializer {
 	// This logger is used to write text to the console and the log file.
@@ -46,7 +64,21 @@ public class Mercenary implements ModInitializer {
 			GLFW.GLFW_KEY_BACKSLASH, // The keycode of the key
 			"category.mercenary" // The translation key of the keybinding's category.
 	));
+	public static final KeyBinding REMOVE_QUEST_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+			"key.mercenary.remove_quest",
+			InputUtil.Type.KEYSYM,
+			GLFW.GLFW_KEY_RIGHT_BRACKET,
+			"category.mercenary"
+	));
+	public static final KeyBinding COUNT_EMERALDS_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+			"key.mercenary.count_emeralds",
+			InputUtil.Type.KEYSYM,
+			GLFW.GLFW_KEY_LEFT_BRACKET,
+			"category.mercenary"
+	));
 	public static final Identifier C2S_BOUNTY_PACKET =  Identifier.of("mercenary","bounty_packet");
+	public static final Identifier C2S_REMOVE_QUEST_PACKET =  Identifier.of("mercenary","remove_quest_packet");
+	public static final Identifier C2S_COUNT_EMERALDS_PACKET =  Identifier.of("mercenary","count_emeralds_packet");
 
 	@Override
 	public void onInitialize() {
@@ -57,6 +89,28 @@ public class Mercenary implements ModInitializer {
 		registerItems();
 
         ServerPlayNetworking.registerGlobalReceiver(C2S_BOUNTY_PACKET,((server, player, handler, buf, responseSender) -> server.execute(()-> sortBounties(player))));
+		ServerPlayNetworking.registerGlobalReceiver(C2S_REMOVE_QUEST_PACKET,((server, player, handler, buf, responseSender) -> server.execute(()-> removeQuest(player))));
+		ServerPlayNetworking.registerGlobalReceiver(C2S_COUNT_EMERALDS_PACKET,((server, player, handler, buf, responseSender) -> server.execute(()-> countEmeralds(player))));
+
+		CommandRegistrationCallback.EVENT.register((dispatcher, phase, registrationEnvironment) -> dispatcher.register(
+
+				literal("mercenary")
+						.requires(source -> source.hasPermissionLevel(0))
+						.then(literal("quest").executes(context -> {
+							sortBounties(context.getSource().getPlayer());
+							return 1;
+						}))
+						.then(literal("count").executes(context -> {
+							countEmeralds(context.getSource().getPlayer());
+							return 1;
+						}))
+						.then(literal("remove").executes(context -> {
+							removeQuest(context.getSource().getPlayer());
+							return 1;
+						}))
+		));
+
+
 		LOGGER.info("Hello Fabric world!");
 	}
 
@@ -72,6 +126,85 @@ public class Mercenary implements ModInitializer {
 	{
 		Registry.register(Registries.ITEM,Identifier.of("mercenary","flag"),new BlockItem(FLAG_BLOCK,new Item.Settings()));
 		Registry.register(Registries.ITEM,Identifier.of("mercenary","crate"),new BlockItem(CRATE,new Item.Settings()));
+	}
+
+	private void dumpStructuresToConfig(MinecraftServer server)
+	{
+		Set<Identifier> ids = server.getRegistryManager().get(RegistryKeys.STRUCTURE).getIds();
+		Set<String> mapped = ids.stream().map(a->a+",").collect(Collectors.toSet());
+        try {
+            FileUtils.writeLines(FabricLoader.getInstance().getConfigDir().resolve("mercenary/structures.txt").toFile(),mapped);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+	private void removeQuest(ServerPlayerEntity spe)
+	{
+		if(spe.getScoreboardTeam()!=null)
+		{
+			if(spe.getServer().getDataCommandStorage().get(Mercenary.STOAGE).contains(spe.getScoreboardTeam().getName()))
+			{
+				NbtCompound cmpd = spe.getServerWorld().getServer().getDataCommandStorage().get(Mercenary.STOAGE);
+				cmpd.remove(spe.getScoreboardTeam().getName());
+				spe.getServerWorld().getServer().getDataCommandStorage().set(Mercenary.STOAGE,cmpd);
+
+				spe.getServerWorld().getPlayers(
+						a->a.getScoreboardTeam().getName().equals(spe.getScoreboardTeam().getName())).forEach(
+						a->a.sendMessage(Text.translatable("text.mercenary.quest_removed"),true));
+
+				spe.getServerWorld().playSound(null, spe.getBlockPos(),SoundEvents.BLOCK_ANVIL_BREAK, SoundCategory.PLAYERS,1,1);
+
+			}
+			else
+			{
+				spe.sendMessage(Text.translatable("text.mercenary.no_quest"));
+			}
+		}
+		else
+		{
+			spe.sendMessage(Text.translatable("text.mercenary.no_team"));
+		}
+	}
+
+	private void countEmeralds(ServerPlayerEntity spe)
+	{
+		if(spe.getScoreboardTeam()!=null)
+		{
+			int added = 0;
+			ItemStack stack = spe.getMainHandStack();
+			if(stack.isOf(Items.EMERALD))
+			{
+				added+=stack.getCount();
+				stack.decrement(64);
+				spe.setStackInHand(Hand.MAIN_HAND,stack);
+			}
+
+			if(spe.getServerWorld().getScoreboard().getObjective("merc_score")==null)
+			{
+				ScoreboardObjective objcv = spe.getServerWorld().getScoreboard().addObjective("merc_score", ScoreboardCriterion.DUMMY,Text.of("[M] Team Scores"), ScoreboardCriterion.RenderType.INTEGER);
+				spe.getServerWorld().getScoreboard().getPlayerScore(spe.getScoreboardTeam().getName(),objcv).incrementScore(added);
+			}
+			else
+			{
+				ScoreboardObjective objcv = spe.getServerWorld().getScoreboard().getObjective("merc_score");
+				spe.getServerWorld().getScoreboard().getPlayerScore(spe.getScoreboardTeam().getName(),objcv).incrementScore(added);
+			}
+
+			if(added>0)
+			{
+				spe.getServerWorld().playSound(null, spe.getBlockPos(),SoundEvents.BLOCK_BEACON_POWER_SELECT, SoundCategory.PLAYERS,1,1);
+				int finalAdded = added;
+				spe.getServerWorld().getPlayers(
+						a->a.getScoreboardTeam().getName().equals(spe.getScoreboardTeam().getName())).forEach(
+						a->a.sendMessage(spe.getName().copy().append(" ").append(Text.translatable("text.mercenary.added_emeralds").append(" ["+ finalAdded +"]")),true));
+			}
+		}
+		else
+		{
+			spe.sendMessage(Text.translatable("text.mercenary.no_team"));
+		}
+
 	}
 
 
@@ -124,9 +257,23 @@ public class Mercenary implements ModInitializer {
 				{
 					if(!compound.getCompound(spe.getScoreboardTeam().getName()).contains("notComplete"))
 					{
-						spe.giveItemStack(new ItemStack(Items.EMERALD,10));
+						int v = spe.getServerWorld().random.nextBetween(1,64);
+						ItemStack stack = new ItemStack(Items.EMERALD,v);
+						spe.giveItemStack(stack);
+
 						spe.getServerWorld().playSound(null, spe.getBlockPos(),SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS,1,1);
-						spe.getServerWorld().getServer().getDataCommandStorage().get(Mercenary.STOAGE).remove(spe.getScoreboardTeam().getName());
+
+						NbtCompound cmpd = spe.getServerWorld().getServer().getDataCommandStorage().get(Mercenary.STOAGE);
+						cmpd.remove(spe.getScoreboardTeam().getName());
+						spe.getServerWorld().getServer().getDataCommandStorage().set(Mercenary.STOAGE,cmpd);
+					}
+					else
+					{
+						BlockPos vPos = NbtHelper.toBlockPos(compound.getCompound(spe.getScoreboardTeam().getName()).getCompound("nextLoc"));
+
+						spe.getServerWorld().getPlayers(
+								a->a.getScoreboardTeam().getName().equals(spe.getScoreboardTeam().getName())).forEach(
+								a->a.sendMessage(Text.translatable("text.mercenary.location").append(vPos.toShortString()),false));
 					}
 				}
 			}

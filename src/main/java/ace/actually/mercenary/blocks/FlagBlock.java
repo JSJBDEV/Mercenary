@@ -54,7 +54,7 @@ public class FlagBlock extends Block {
                                 world.playSound(null,pos,SoundEvents.ENTITY_VILLAGER_NO,SoundCategory.BLOCKS,1,1);
                                 serverWorld.getPlayers(
                                         a->a.getScoreboardTeam().getName().equals(placer.getScoreboardTeam().getName())).forEach(
-                                        a->a.sendMessage(Text.of("text.mercenary.hostiles"),false));
+                                        a->a.sendMessage(Text.translatable("text.mercenary.hostiles"),false));
                                 world.breakBlock(pos,true);
                                 host.forEach(a->a.addStatusEffect(new StatusEffectInstance(StatusEffects.GLOWING,500)));
                             }

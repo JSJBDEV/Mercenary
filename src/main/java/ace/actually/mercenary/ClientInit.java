@@ -18,5 +18,17 @@ public class ClientInit implements ClientModInitializer {
                 ClientPlayNetworking.send(Mercenary.C2S_BOUNTY_PACKET,byteBuf);
             }
         });
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (Mercenary.REMOVE_QUEST_KEY.wasPressed()) {
+                PacketByteBuf byteBuf = PacketByteBufs.create();
+                ClientPlayNetworking.send(Mercenary.C2S_REMOVE_QUEST_PACKET,byteBuf);
+            }
+        });
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (Mercenary.COUNT_EMERALDS_KEY.wasPressed()) {
+                PacketByteBuf byteBuf = PacketByteBufs.create();
+                ClientPlayNetworking.send(Mercenary.C2S_COUNT_EMERALDS_PACKET,byteBuf);
+            }
+        });
     }
 }

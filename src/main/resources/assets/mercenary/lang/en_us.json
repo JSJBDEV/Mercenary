@@ -1,5 +1,4 @@
 {
-  "block.mercenary.bounty_board": "Bounty Board",
   "block.mercenary.crate": "Crate",
   "block.mercenary.flag": "Flag",
 
@@ -7,8 +6,11 @@
   "text.mercenary.hostiles": "There are still some hostiles around!",
   "text.mercenary.rogues": "You must deal with some rogues at ",
   "text.mercenary.package": "You must deliver this package to ",
+  "text.mercenary.location": "You must travel to ",
   "text.mercenary.quest": "A new quest has been added to your team!",
-  "text.mercenary.no_village": "You need to be in a village to get a new quest!",
+  "text.mercenary.quest_removed": "Your current quest has been removed from your team!",
+  "text.mercenary.added_emeralds": "added emeralds to your teams score!",
+  "text.mercenary.no_village": "You need to be in a village to get a new/check your quest!",
   "text.mercenary.no_team": "You need to be in a team to use the Mercenary mod!",
   "text.mercenary.no_quest": "You are not on a mission currently!",
   "text.mercenary.faraway": "You are too far away from the drop-off point!",
