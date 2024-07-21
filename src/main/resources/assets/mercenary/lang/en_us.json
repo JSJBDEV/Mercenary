@@ -15,5 +15,7 @@
   "text.mercenary.no_quest": "You are not on a mission currently!",
   "text.mercenary.faraway": "You are too far away from the drop-off point!",
   "category.mercenary": "Mercenary",
-  "key.mercenary.bounty": "Ask villagers about bounties"
+  "key.mercenary.bounty": "Ask villagers about bounties",
+  "key.mercenary.remove_quest": "Remove your teams current quest",
+  "key.mercenary.count_emeralds": "Added your emeralds to your teams total"
 }

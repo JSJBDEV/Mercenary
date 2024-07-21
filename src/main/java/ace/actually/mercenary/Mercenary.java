@@ -2,16 +2,12 @@ package ace.actually.mercenary;
 
 import ace.actually.mercenary.blocks.FlagBlock;
 import brightspark.asynclocator.AsyncLocator;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ModInitializer;
 
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.AbstractBlock;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.item.BlockItem;
@@ -28,7 +24,6 @@ import net.minecraft.registry.tag.TagKey;
 import net.minecraft.scoreboard.ScoreboardCriterion;
 import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.command.LocateCommand;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -39,11 +34,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.gen.structure.Structure;
 import org.apache.commons.io.FileUtils;
-import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -58,24 +51,7 @@ public class Mercenary implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("mercenary");
 	public static final Identifier STOAGE = Identifier.of("mercenary","storage");
 	public static final TagKey<Structure> ROGUES = TagKey.of(RegistryKeys.STRUCTURE,Identifier.of("mercenary","rogues"));
-	public static final KeyBinding BOUNTY_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-			"key.mercenary.bounty", // The translation key of the keybinding's name
-			InputUtil.Type.KEYSYM, // The type of the keybinding, KEYSYM for keyboard, MOUSE for mouse.
-			GLFW.GLFW_KEY_BACKSLASH, // The keycode of the key
-			"category.mercenary" // The translation key of the keybinding's category.
-	));
-	public static final KeyBinding REMOVE_QUEST_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-			"key.mercenary.remove_quest",
-			InputUtil.Type.KEYSYM,
-			GLFW.GLFW_KEY_RIGHT_BRACKET,
-			"category.mercenary"
-	));
-	public static final KeyBinding COUNT_EMERALDS_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-			"key.mercenary.count_emeralds",
-			InputUtil.Type.KEYSYM,
-			GLFW.GLFW_KEY_LEFT_BRACKET,
-			"category.mercenary"
-	));
+
 	public static final Identifier C2S_BOUNTY_PACKET =  Identifier.of("mercenary","bounty_packet");
 	public static final Identifier C2S_REMOVE_QUEST_PACKET =  Identifier.of("mercenary","remove_quest_packet");
 	public static final Identifier C2S_COUNT_EMERALDS_PACKET =  Identifier.of("mercenary","count_emeralds_packet");
